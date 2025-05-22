@@ -40,6 +40,11 @@ from albumentations import (
     Compose
 )
 
+import numpy as np
+y = np.load('face_recognition_data/y_data.npy')
+print(set(y))
+print("Number of classes:", len(set(y)))
+
 # Register View
 class RegisterStudentView(APIView):
     authentication_classes = []  # Disable authentication for this view
@@ -125,7 +130,7 @@ class GetStudentDataView(APIView):
             return Response({"detail": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
+# @csrf_exempt
 # def create_dataset(request):
 #     if request.method == "POST":
 #         try:
@@ -330,181 +335,181 @@ def create_dataset(request):
             print("Starting training process...")
 
             # # Training process begins
-            # training_dir = 'face_recognition_data/training_dataset'
+            training_dir = 'face_recognition_data/training_dataset'
 
-            # # Load processed images list
-            # processed_images_path = 'face_recognition_data/processed_images.pkl'
-            # try:
-            #     if os.path.exists(processed_images_path):
-            #         with open(processed_images_path, 'rb') as f:
-            #             processed_images = pickle.load(f)
-            #     else:
-            #         processed_images = set()
-            # except Exception as e:
-            #     print(f"Error loading processed images list: {str(e)}")
-            #     processed_images = set()
+            # Load processed images list
+            processed_images_path = 'face_recognition_data/processed_images.pkl'
+            try:
+                if os.path.exists(processed_images_path):
+                    with open(processed_images_path, 'rb') as f:
+                        processed_images = pickle.load(f)
+                else:
+                    processed_images = set()
+            except Exception as e:
+                print(f"Error loading processed images list: {str(e)}")
+                processed_images = set()
 
-            # # Load existing model and data
-            # try:
-            #     with open("face_recognition_data/svc.sav", 'rb') as f:
-            #         existing_model = pickle.load(f)
-            #     existing_classes = np.load('face_recognition_data/classes.npy', allow_pickle=True)
-            #     X_existing = np.load('face_recognition_data/X_data.npy', allow_pickle=True)
-            #     y_existing = np.load('face_recognition_data/y_data.npy', allow_pickle=True)
-            #     print("Loaded existing model data:")
-            #     print(f"Existing classes: {existing_classes}")
-            #     print(f"Number of existing samples: {len(X_existing)}")
-            #     has_existing_data = True
-            # except Exception as e:
-            #     print(f"No existing model found or error loading model: {str(e)}")
-            #     has_existing_data = False
-            #     X_existing = []
-            #     y_existing = []
-            #     existing_model = None
-            #     existing_classes = []
+            # Load existing model and data
+            try:
+                with open("face_recognition_data/svc.sav", 'rb') as f:
+                    existing_model = pickle.load(f)
+                existing_classes = np.load('face_recognition_data/classes.npy', allow_pickle=True)
+                X_existing = np.load('face_recognition_data/X_data.npy', allow_pickle=True)
+                y_existing = np.load('face_recognition_data/y_data.npy', allow_pickle=True)
+                print("Loaded existing model data:")
+                print(f"Existing classes: {existing_classes}")
+                print(f"Number of existing samples: {len(X_existing)}")
+                has_existing_data = True
+            except Exception as e:
+                print(f"No existing model found or error loading model: {str(e)}")
+                has_existing_data = False
+                X_existing = []
+                y_existing = []
+                existing_model = None
+                existing_classes = []
 
-            # X_new = []
-            # y_new = []
-            # new_images_processed = False
-            # new_classes_added = set()
+            X_new = []
+            y_new = []
+            new_images_processed = False
+            new_classes_added = set()
 
-            # # Get list of folders in training directory
-            # people_folders = [f for f in os.listdir(training_dir) 
-            #                  if os.path.isdir(os.path.join(training_dir, f))]
+            # Get list of folders in training directory
+            people_folders = [f for f in os.listdir(training_dir) 
+                             if os.path.isdir(os.path.join(training_dir, f))]
             
-            # print(f"Number of people folders: {len(people_folders)}")
-            # print(f"People folders: {people_folders}")
+            print(f"Number of people folders: {len(people_folders)}")
+            print(f"People folders: {people_folders}")
 
-            # # First, identify new people/classes
-            # new_people = [person for person in people_folders 
-            #              if person not in existing_classes]
+            # First, identify new people/classes
+            new_people = [person for person in people_folders 
+                         if person not in existing_classes]
             
-            # print(f"Number of new people: {len(new_people)}")
-            # print(f"New people: {new_people}")
+            print(f"Number of new people: {len(new_people)}")
+            print(f"New people: {new_people}")
 
-            # if not new_people:
-            #     print('No new people to train. All existing folders are already trained.')
-            #     return JsonResponse({
-            #         "status": "success",
-            #         "message": "Dataset created and no new people to train."
-            #     })
+            if not new_people:
+                print('No new people to train. All existing folders are already trained.')
+                return JsonResponse({
+                    "status": "success",
+                    "message": "Dataset created and no new people to train."
+                })
 
-            # # Process only new people's folders
-            # for person_name in new_people:
-            #     curr_directory = os.path.join(training_dir, person_name)
-            #     print(f"Processing new person: {person_name}")
-            #     new_classes_added.add(person_name)
+            # Process only new people's folders
+            for person_name in new_people:
+                curr_directory = os.path.join(training_dir, person_name)
+                print(f"Processing new person: {person_name}")
+                new_classes_added.add(person_name)
 
-            #     person_images_processed = 0
-            #     for imagefile in image_files_in_folder(curr_directory):
-            #         abs_path = os.path.abspath(imagefile)
-            #         if abs_path in processed_images:
-            #             continue
+                person_images_processed = 0
+                for imagefile in image_files_in_folder(curr_directory):
+                    abs_path = os.path.abspath(imagefile)
+                    if abs_path in processed_images:
+                        continue
 
-            #         print(f"Processing new image: {imagefile}")
-            #         image = cv2.imread(imagefile)
+                    print(f"Processing new image: {imagefile}")
+                    image = cv2.imread(imagefile)
 
-            #         if image is None:
-            #             print(f"Failed to load image: {imagefile}")
-            #             continue
+                    if image is None:
+                        print(f"Failed to load image: {imagefile}")
+                        continue
 
-            #         try:
-            #             face_encodings = face_recognition.face_encodings(image)
-            #             if not face_encodings:
-            #                 print(f"No face detected in {imagefile}")
-            #                 continue
+                    try:
+                        face_encodings = face_recognition.face_encodings(image)
+                        if not face_encodings:
+                            print(f"No face detected in {imagefile}")
+                            continue
                             
-            #             face_encoding = face_encodings[0].tolist()
-            #             X_new.append(face_encoding)
-            #             y_new.append(person_name)
-            #             processed_images.add(abs_path)
-            #             new_images_processed = True
-            #             person_images_processed += 1
-            #         except Exception as e:
-            #             print(f"Error processing {imagefile}: {str(e)}")
-            #             continue
+                        face_encoding = face_encodings[0].tolist()
+                        X_new.append(face_encoding)
+                        y_new.append(person_name)
+                        processed_images.add(abs_path)
+                        new_images_processed = True
+                        person_images_processed += 1
+                    except Exception as e:
+                        print(f"Error processing {imagefile}: {str(e)}")
+                        continue
 
-            #     if person_images_processed == 0:
-            #         print(f"Warning: No valid face encodings processed for {person_name}")
+                if person_images_processed == 0:
+                    print(f"Warning: No valid face encodings processed for {person_name}")
 
-            # print(f"Number of successful encodings: {len(X_new)}")
+            print(f"Number of successful encodings: {len(X_new)}")
 
-            # # If no new data, return early
-            # if not new_images_processed:
-            #     print('No new images were successfully processed')
-            #     return JsonResponse({
-            #         "status": "success",
-            #         "message": "Dataset created but no new images were processed."
-            #     })
+            # If no new data, return early
+            if not new_images_processed:
+                print('No new images were successfully processed')
+                return JsonResponse({
+                    "status": "success",
+                    "message": "Dataset created but no new images were processed."
+                })
 
-            # # Save updated list of processed images
-            # with open(processed_images_path, 'wb') as f:
-            #     pickle.dump(processed_images, f)
+            # Save updated list of processed images
+            with open(processed_images_path, 'wb') as f:
+                pickle.dump(processed_images, f)
 
-            # # Check if we have enough classes for training
-            # if has_existing_data:
-            #     all_classes = set(existing_classes).union(new_classes_added)
-            # else:
-            #     all_classes = new_classes_added
+            # Check if we have enough classes for training
+            if has_existing_data:
+                all_classes = set(existing_classes).union(new_classes_added)
+            else:
+                all_classes = new_classes_added
 
-            # if len(all_classes) < 2:
-            #     return JsonResponse({
-            #         "status": "error",
-            #         "message": "Need at least two different people to train the model. Please add more people's data."
-            #     })
+            if len(all_classes) < 2:
+                return JsonResponse({
+                    "status": "error",
+                    "message": "Need at least two different people to train the model. Please add more people's data."
+                })
 
-            # # Combine new data with existing data and train
-            # print("Adding new person data to model...")
-            # if has_existing_data:
-            #     X = np.vstack((X_existing, np.array(X_new)))
-            #     y = np.concatenate((y_existing, np.array(y_new)))
-            # else:
-            #     X = np.array(X_new)
-            #     y = np.array(y_new)
+            # Combine new data with existing data and train
+            print("Adding new person data to model...")
+            if has_existing_data:
+                X = np.vstack((X_existing, np.array(X_new)))
+                y = np.concatenate((y_existing, np.array(y_new)))
+            else:
+                X = np.array(X_new)
+                y = np.array(y_new)
 
-            # # Verify we have enough samples for each class
-            # unique_classes, class_counts = np.unique(y, return_counts=True)
-            # min_samples_per_class = 1  # Adjust this threshold as needed
+            # Verify we have enough samples for each class
+            unique_classes, class_counts = np.unique(y, return_counts=True)
+            min_samples_per_class = 1  # Adjust this threshold as needed
             
-            # classes_with_few_samples = [
-            #     (cls, count) for cls, count in zip(unique_classes, class_counts)
-            #     if count < min_samples_per_class
-            # ]
+            classes_with_few_samples = [
+                (cls, count) for cls, count in zip(unique_classes, class_counts)
+                if count < min_samples_per_class
+            ]
             
-            # if classes_with_few_samples:
-            #     return JsonResponse({
-            #         "status": "error",
-            #         "message": f"Some classes have too few samples: {classes_with_few_samples}. Need at least {min_samples_per_class} samples per person."
-            #     })
+            if classes_with_few_samples:
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Some classes have too few samples: {classes_with_few_samples}. Need at least {min_samples_per_class} samples per person."
+                })
 
-            # # Train new model with all data
-            # print("Training updated model...")
-            # svc = SVC(kernel='linear', probability=True)
-            # svc.fit(X, y)
+            # Train new model with all data
+            print("Training updated model...")
+            svc = SVC(kernel='linear', probability=True)
+            svc.fit(X, y)
 
-            # # Save updated model and data
-            # print("Saving updated model and data...")
-            # np.save('face_recognition_data/X_data.npy', X)
-            # np.save('face_recognition_data/y_data.npy', y)
-            # np.save('face_recognition_data/classes.npy', np.unique(y))
+            # Save updated model and data
+            print("Saving updated model and data...")
+            np.save('face_recognition_data/X_data.npy', X)
+            np.save('face_recognition_data/y_data.npy', y)
+            np.save('face_recognition_data/classes.npy', np.unique(y))
 
-            # with open("face_recognition_data/svc.sav", 'wb') as f:
-            #     pickle.dump(svc, f)
+            with open("face_recognition_data/svc.sav", 'wb') as f:
+                pickle.dump(svc, f)
 
-            # # Calculate accuracy metrics
-            # accuracy = svc.score(X, y)
+            # Calculate accuracy metrics
+            accuracy = svc.score(X, y)
 
-            # print(f"Model accuracy: {accuracy:.2f}")
-            # print(f"Added {len(new_people)} new people: {', '.join(new_people)}")
-            # print(f"Processed {len(X_new)} new images")
-            # print(f"Total samples after update: {len(X)}")
-            # print(f"Total classes after update: {len(np.unique(y))}")
+            print(f"Model accuracy: {accuracy:.2f}")
+            print(f"Added {len(new_people)} new people: {', '.join(new_people)}")
+            print(f"Processed {len(X_new)} new images")
+            print(f"Total samples after update: {len(X)}")
+            print(f"Total classes after update: {len(np.unique(y))}")
 
-            # return JsonResponse({
-            #     "status": "success",
-            #     "message": f"Dataset created and training completed. Added {len(new_people)} new people ({', '.join(new_people)}) with {len(X_new)} images. Current accuracy: {accuracy:.2f}",
-            #     "accuracy": accuracy
-            # })
+            return JsonResponse({
+                "status": "success",
+                "message": f"Dataset created and training completed. Added {len(new_people)} new people ({', '.join(new_people)}) with {len(X_new)} images. Current accuracy: {accuracy:.2f}",
+                "accuracy": accuracy
+            })
             return JsonResponse({
                 "status": "success",
                 "message": "Dataset created successfully."
